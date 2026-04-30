@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'register_screen.dart';
 import '../main_layout.dart';
 import '../../theme/app_theme.dart';
@@ -24,9 +25,14 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _onLogin() {
+  void _onLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
-      Navigator.pushReplacement(
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setString('userEmail', _emailController.text);
+
+      if (mounted) {
+        Navigator.pushReplacement(
         context,
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => const MainLayout(),
@@ -35,6 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
           transitionDuration: const Duration(milliseconds: 500),
         ),
       );
+      }
     }
   }
 

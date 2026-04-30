@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/contact.dart';
 import '../services/contact_service.dart';
 import '../widgets/contact_card.dart';
@@ -23,14 +25,33 @@ class _ContactsScreenState extends State<ContactsScreen> {
     _loadData();
   }
 
+  Future<void> _saveContacts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final contactsJson = _contacts.map((c) => jsonEncode(c.toJson())).toList();
+    await prefs.setStringList('contacts', contactsJson);
+  }
+
   Future<void> _loadData() async {
     try {
-      final contacts = await _contactService.loadContacts();
-      if (mounted) {
-        setState(() {
-          _contacts = contacts;
-          _isLoading = false;
-        });
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.containsKey('contacts')) {
+        final contactsList = prefs.getStringList('contacts') ?? [];
+        final contacts = contactsList.map((c) => Contact.fromJson(jsonDecode(c))).toList();
+        if (mounted) {
+          setState(() {
+            _contacts = contacts;
+            _isLoading = false;
+          });
+        }
+      } else {
+        final contacts = await _contactService.loadContacts();
+        if (mounted) {
+          setState(() {
+            _contacts = contacts;
+            _isLoading = false;
+          });
+          _saveContacts();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -47,6 +68,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     setState(() {
       _contacts.removeAt(index);
     });
+    _saveContacts();
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -59,6 +81,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             setState(() {
               _contacts.insert(index, removed);
             });
+            _saveContacts();
           },
         ),
       ),

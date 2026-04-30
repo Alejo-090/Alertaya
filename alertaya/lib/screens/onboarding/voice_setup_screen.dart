@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../main_layout.dart';
 import '../../theme/app_theme.dart';
 
@@ -88,8 +89,13 @@ class VoiceSetupScreen extends StatelessWidget {
               const SizedBox(height: 32),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.surface, foregroundColor: Colors.white),
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const MainLayout()), (route) => false);
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('onboardingDone', true);
+                  
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const MainLayout()), (route) => false);
+                  }
                 },
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
