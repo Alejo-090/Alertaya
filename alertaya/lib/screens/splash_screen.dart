@@ -1,10 +1,7 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
+import 'auth/login_screen.dart';
 import '../theme/app_theme.dart';
-import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,240 +11,183 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with TickerProviderStateMixin {
-  // ── Pulsing ring animation ──────────────────────────────────────
-  late final AnimationController _pulseController;
-  late final Animation<double> _pulseScale;
-  late final Animation<double> _pulseOpacity;
-
-  // ── Shield "pop-in" animation ───────────────────────────────────
-  late final AnimationController _shieldController;
-  late final Animation<double> _shieldScale;
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    // Transparent status bar, light icons
-    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: AppColors.background,
-    ));
-
-    // Shield elasticOut pop-in
-    _shieldController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
-    _shieldScale = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _shieldController, curve: Curves.elasticOut),
-    );
-
-    // Repeating pulse ring
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
-    );
-    _pulseScale = Tween<double>(begin: 1.0, end: 1.55).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
-    );
-    _pulseOpacity = Tween<double>(begin: 0.55, end: 0.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Kick off animations then navigate
-    _shieldController.forward();
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted) _pulseController.repeat();
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const LoginScreen(),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 600),
+          ),
+        );
+      }
     });
-
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) _navigateToLogin();
-    });
-  }
-
-  void _navigateToLogin() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (_, animation, __) => FadeTransition(
-          opacity: animation,
-          child: const LoginScreen(),
-        ),
-        transitionDuration: const Duration(milliseconds: 600),
-      ),
-    );
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
-    _shieldController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: SizedBox(
-            width: size.width,
-            height: size.height -
-                MediaQuery.of(context).padding.top -
-                MediaQuery.of(context).padding.bottom,
-            child: Stack(
-              alignment: Alignment.center,
+      body: Stack(
+        children: [
+          // ── Vignette rojo sutil ──────────────────────────
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 1.2,
+                  colors: [
+                    AppColors.primary.withOpacity(0.12),
+                    AppColors.background,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // ── Contenido centrado ───────────────────────────
+          SafeArea(
+            child: Column(
               children: [
-                // ── Red radial glow ───────────────────────────────
-                Positioned(
-                  child: Container(
-                    width: 300,
-                    height: 300,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          AppColors.primary.withValues(alpha: 0.18),
-                          AppColors.primary.withValues(alpha: 0.06),
-                          Colors.transparent,
+                const Spacer(),
+
+                // Logo con pulso
+                FadeInDown(
+                  duration: const Duration(milliseconds: 700),
+                  child: AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (_, child) => Transform.scale(
+                      scale: _pulseAnimation.value,
+                      child: child,
+                    ),
+                    child: Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.surface,
+                        border: Border.all(color: AppColors.border, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.35),
+                            blurRadius: 48,
+                            spreadRadius: 8,
+                          ),
                         ],
-                        stops: const [0.0, 0.5, 1.0],
+                      ),
+                      child: const Icon(
+                        Icons.shield,
+                        color: AppColors.primary,
+                        size: 60,
                       ),
                     ),
                   ),
                 ),
 
-                // ── Main content column ───────────────────────────
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Pulsing ring + shield icon
-                    SizedBox(
-                      width: 140,
-                      height: 140,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Animated pulse ring
-                          AnimatedBuilder(
-                            animation: _pulseController,
-                            builder: (_, __) => Transform.scale(
-                              scale: _pulseScale.value,
-                              child: Opacity(
-                                opacity: _pulseOpacity.value,
-                                child: Container(
-                                  width: 100,
-                                  height: 100,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: AppColors.primary,
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                const SizedBox(height: 32),
 
-                          // Shield circle
-                          AnimatedBuilder(
-                            animation: _shieldController,
-                            builder: (_, __) => Transform.scale(
-                              scale: _shieldScale.value,
-                              child: Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppColors.surface,
-                                  border: Border.all(
-                                    color: AppColors.border,
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.3),
-                                      blurRadius: 24,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.shield,
-                                  color: AppColors.primary,
-                                  size: 48,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                // Título
+                FadeInUp(
+                  delay: const Duration(milliseconds: 200),
+                  duration: const Duration(milliseconds: 600),
+                  child: const Text(
+                    'AlertaYA',
+                    style: TextStyle(
+                      color: AppColors.white,
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
                     ),
-
-                    const SizedBox(height: 36),
-
-                    // "AlertaYA" title
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 600),
-                      duration: const Duration(milliseconds: 700),
-                      child: Text(
-                        'AlertaYA',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 42,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.white,
-                          letterSpacing: -1.0,
-                          height: 1.1,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // Subtitle
-                    FadeInUp(
-                      delay: const Duration(milliseconds: 800),
-                      duration: const Duration(milliseconds: 700),
-                      child: Text(
-                        'Tu seguridad, en un toque.',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 15,
-                          color: AppColors.white.withValues(alpha: 0.45),
-                          fontWeight: FontWeight.w400,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
 
-                // ── "SECURED BY SENTINEL" badge ───────────────────
-                Positioned(
-                  bottom: 28,
-                  child: FadeIn(
-                    delay: const Duration(milliseconds: 1000),
-                    duration: const Duration(milliseconds: 800),
-                    child: Text(
-                      'SECURED BY SENTINEL',
-                      style: GoogleFonts.dmMono(
-                        fontSize: 10,
-                        letterSpacing: 3,
-                        color: AppColors.white.withValues(alpha: 0.20),
-                        fontWeight: FontWeight.w500,
-                      ),
+                const SizedBox(height: 10),
+
+                // Subtítulo
+                FadeInUp(
+                  delay: const Duration(milliseconds: 350),
+                  duration: const Duration(milliseconds: 600),
+                  child: const Text(
+                    'Tu seguridad, en un toque.',
+                    style: TextStyle(
+                      color: AppColors.hint,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+
+                const Spacer(),
+
+                // Bottom row
+                FadeIn(
+                  delay: const Duration(milliseconds: 500),
+                  duration: const Duration(milliseconds: 700),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 36.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 2,
+                          color: AppColors.primary.withOpacity(0.6),
+                        ),
+                        const SizedBox(width: 12),
+                        const Icon(
+                          Icons.lock_outlined,
+                          color: AppColors.hint,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'SECURED BY SENTINEL',
+                          style: TextStyle(
+                            color: AppColors.hint,
+                            fontSize: 10,
+                            letterSpacing: 2.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 36,
+                          height: 2,
+                          color: AppColors.primary.withOpacity(0.6),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
